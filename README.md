@@ -124,6 +124,7 @@ Endpoints once the app is running:
 - Health: <http://localhost:8080/actuator/health>
 - Prometheus metrics: <http://localhost:8080/actuator/prometheus> (filter `vietsms_*` counters for domain events)
 - Error code catalog: [`docs/error-codes.md`](docs/error-codes.md)
+- Architecture and design rationale: [`docs/architecture.md`](docs/architecture.md)
 
 ### Smoke test
 
