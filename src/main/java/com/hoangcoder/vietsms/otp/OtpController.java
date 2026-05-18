@@ -6,6 +6,8 @@ import com.hoangcoder.vietsms.otp.dto.VerifyOtpRequest;
 import com.hoangcoder.vietsms.otp.dto.VerifyOtpResponse;
 import com.hoangcoder.vietsms.security.ApiKey;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +28,14 @@ public class OtpController {
     private final OtpService otpService;
 
     @PostMapping("/send")
-    @Operation(summary = "Issue an OTP for a phone number")
+    @Operation(summary = "Issue an OTP for a phone number",
+            description = "The `devCode` field in the response is FOR DEMO ONLY — real telecom systems never return the code over the API.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "202", description = "OTP issued"),
+            @ApiResponse(responseCode = "400", description = "Validation error (invalid phone, length out of range)"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid x-api-key header"),
+            @ApiResponse(responseCode = "429", description = "Cooldown active or rate limit exceeded; see `Retry-After` header")
+    })
     public ResponseEntity<SendOtpResponse> send(
             @AuthenticationPrincipal ApiKey key,
             @Valid @RequestBody SendOtpRequest request) {
@@ -43,7 +52,14 @@ public class OtpController {
     }
 
     @PostMapping("/verify")
-    @Operation(summary = "Verify an OTP code for a phone number")
+    @Operation(summary = "Verify an OTP code for a phone number",
+            description = "Always returns 200. The `verified` field tells you whether the code was accepted; on rejection `reason` is one of " +
+                    "NO_OTP_ISSUED, INVALID_CODE, LOCKED, EXPIRED, ALREADY_VERIFIED, NO_ACTIVE_OTP.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Verification result (see `verified` and `reason`)"),
+            @ApiResponse(responseCode = "400", description = "Validation error (invalid phone, code not 4-8 digits)"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid x-api-key header")
+    })
     public VerifyOtpResponse verify(
             @AuthenticationPrincipal ApiKey key,
             @Valid @RequestBody VerifyOtpRequest request) {
