@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: vietsms-gateway
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:h2:file:./data/vietsms;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+server:
+  port: 8080
+  error:
+    include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+vietsms:
+  delivery:
+    worker-interval-ms: 1000
+    batch-size: 50
+    success-rate: 0.95
+    min-delay-ms: 1000
+    max-delay-ms: 3000
+    max-retries: 3
+  ratelimit:
+    sms-per-minute: 10
+    otp-per-minute: 5
+    otp-per-phone-cooldown-seconds: 30
+  otp:
+    default-length: 6
+    default-ttl-seconds: 300
+    max-attempts: 3

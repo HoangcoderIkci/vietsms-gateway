@@ -1,0 +1,19 @@
+CREATE TABLE sms_messages (
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    api_key_id        BIGINT       NOT NULL,
+    client_message_id VARCHAR(64),
+    to_phone          VARCHAR(16)  NOT NULL,
+    content           VARCHAR(160) NOT NULL,
+    status            VARCHAR(16)  NOT NULL,
+    retry_count       INT          NOT NULL DEFAULT 0,
+    next_retry_at     TIMESTAMP,
+    error_code        VARCHAR(32),
+    created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sent_at           TIMESTAMP,
+    delivered_at      TIMESTAMP,
+    CONSTRAINT fk_sms_api_key FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+);
+
+CREATE UNIQUE INDEX uq_sms_idempotency ON sms_messages (api_key_id, client_message_id);
+CREATE INDEX idx_sms_status_next_retry ON sms_messages (status, next_retry_at);
+CREATE INDEX idx_sms_api_key_created ON sms_messages (api_key_id, created_at);

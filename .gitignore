@@ -1,0 +1,39 @@
+.superpowers/
+.claude/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Java / Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+*.class
+HELP.md
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# Local DB / logs
+data/
+*.db
+*.mv.db
+*.trace.db
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.local

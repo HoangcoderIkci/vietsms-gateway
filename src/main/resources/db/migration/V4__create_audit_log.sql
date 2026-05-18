@@ -1,0 +1,13 @@
+CREATE TABLE audit_log (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    api_key_id   BIGINT,
+    endpoint     VARCHAR(128) NOT NULL,
+    method       VARCHAR(8)   NOT NULL,
+    status_code  INT          NOT NULL,
+    phone_masked VARCHAR(16),
+    request_id   VARCHAR(36),
+    created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_audit_api_key FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+);
+
+CREATE INDEX idx_audit_api_key_created ON audit_log (api_key_id, created_at);
