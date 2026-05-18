@@ -1,6 +1,7 @@
 package com.hoangcoder.vietsms.otp;
 
 import com.hoangcoder.vietsms.common.PhoneNormalizer;
+import com.hoangcoder.vietsms.common.VietsmsMetrics;
 import com.hoangcoder.vietsms.common.exceptions.TooEarlyException;
 import com.hoangcoder.vietsms.otp.dto.SendOtpRequest;
 import com.hoangcoder.vietsms.otp.dto.VerifyOtpResponse;
@@ -32,6 +33,7 @@ public class OtpService {
     private long cooldownSeconds;
 
     private final OtpRepository repository;
+    private final VietsmsMetrics metrics;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
     private final SecureRandom random = new SecureRandom();
 
@@ -59,7 +61,9 @@ public class OtpService {
                 .createdAt(now)
                 .build();
 
-        return new Issued(repository.save(entity), rawCode);
+        Issued issued = new Issued(repository.save(entity), rawCode);
+        metrics.otpIssued();
+        return issued;
     }
 
     @Transactional
@@ -84,6 +88,7 @@ public class OtpService {
         if (encoder.matches(code, active.getCodeHash())) {
             active.setVerifiedAt(now);
             repository.save(active);
+            metrics.otpVerified();
             return VerifyOtpResponse.ok();
         }
 
@@ -92,9 +97,11 @@ public class OtpService {
         if (left <= 0) {
             active.setLocked(true);
             repository.save(active);
+            metrics.otpLocked();
             return VerifyOtpResponse.fail("LOCKED", 0);
         }
         repository.save(active);
+        metrics.otpInvalid();
         return VerifyOtpResponse.fail("INVALID_CODE", left);
     }
 

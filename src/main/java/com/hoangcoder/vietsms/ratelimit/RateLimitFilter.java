@@ -2,6 +2,7 @@ package com.hoangcoder.vietsms.ratelimit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hoangcoder.vietsms.common.ApiError;
+import com.hoangcoder.vietsms.common.VietsmsMetrics;
 import com.hoangcoder.vietsms.security.ApiKey;
 import com.hoangcoder.vietsms.security.ApiKeyPrincipal;
 import jakarta.servlet.FilterChain;
@@ -34,6 +35,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final SlidingWindowLimiter limiter;
     private final ObjectMapper objectMapper;
+    private final VietsmsMetrics metrics;
 
     private static final Map<String, String> ENDPOINT_KEYS = Map.of(
             "POST /v1/sms/send", "sms",
@@ -62,6 +64,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         response.setHeader("X-RateLimit-Limit", String.valueOf(limit));
         response.setHeader("X-RateLimit-Remaining", String.valueOf(d.remaining()));
         if (!d.allowed()) {
+            metrics.rateLimitTripped();
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setHeader("Retry-After", String.valueOf(d.retryAfterSeconds()));

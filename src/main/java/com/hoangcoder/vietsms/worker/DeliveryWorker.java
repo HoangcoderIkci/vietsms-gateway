@@ -1,5 +1,6 @@
 package com.hoangcoder.vietsms.worker;
 
+import com.hoangcoder.vietsms.common.VietsmsMetrics;
 import com.hoangcoder.vietsms.sms.SmsMessage;
 import com.hoangcoder.vietsms.sms.SmsRepository;
 import com.hoangcoder.vietsms.sms.SmsStatus;
@@ -34,6 +35,7 @@ public class DeliveryWorker {
     private int maxRetries;
 
     private final SmsRepository repository;
+    private final VietsmsMetrics metrics;
 
     @Scheduled(fixedDelayString = "${vietsms.delivery.worker-interval-ms:1000}")
     @Transactional
@@ -72,6 +74,7 @@ public class DeliveryWorker {
                 m.setStatus(SmsStatus.DELIVERED);
                 m.setDeliveredAt(now);
                 m.setErrorCode(null);
+                metrics.smsDelivered();
             } else {
                 handleFailure(m, now);
             }
@@ -86,11 +89,13 @@ public class DeliveryWorker {
         if (m.getRetryCount() >= maxRetries) {
             m.setStatus(SmsStatus.FAILED);
             m.setNextRetryAt(null);
+            metrics.smsFailedTerminal();
             return;
         }
         long backoffSeconds = (long) Math.pow(2, m.getRetryCount() + 1);
         m.setStatus(SmsStatus.QUEUED);
         m.setNextRetryAt(now.plusSeconds(backoffSeconds));
         m.setSentAt(null);
+        metrics.smsRetried();
     }
 }

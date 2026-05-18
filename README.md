@@ -58,6 +58,8 @@ Endpoints once the app is running:
 - Swagger UI: <http://localhost:8080/swagger-ui.html>
 - H2 console: <http://localhost:8080/h2-console>
 - Health: <http://localhost:8080/actuator/health>
+- Prometheus metrics: <http://localhost:8080/actuator/prometheus> (filter `vietsms_*` counters for domain events)
+- Error code catalog: [`docs/error-codes.md`](docs/error-codes.md)
 
 ### Smoke test
 
