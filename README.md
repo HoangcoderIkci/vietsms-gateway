@@ -75,8 +75,8 @@ The project is built in seven daily slices. Each day's deliverable is small but 
 
 | Day | Theme | Status |
 |---|---|---|
-| 1 | Bootstrap: project skeleton, DB schema, API key auth, demo seeder, Swagger | **In progress** |
-| 2 | SMS endpoints (send, get, list) and the delivery worker with retries | Planned |
+| 1 | Bootstrap: project skeleton, DB schema, API key auth, demo seeder, Swagger | **Done** |
+| 2 | SMS endpoints (send, get, list) and the delivery worker with retries | **Done** |
 | 3 | OTP endpoints (send, verify) with attempt locking and cooldown | Planned |
 | 4 | Rate limiting (sliding window) and audit logging | Planned |
 | 5 | Validation polish, idempotency end-to-end, observability | Planned |

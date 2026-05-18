@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:vietsmstest;DB_CLOSE_DELAY=-1;MODE=LEGACY
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  h2:
+    console:
+      enabled: false
+
+vietsms:
+  delivery:
+    worker-interval-ms: 200
+    min-delay-ms: 100
+    success-rate: 0.95
+    max-retries: 3

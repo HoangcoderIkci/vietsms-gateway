@@ -32,6 +32,17 @@ public class GlobalExceptionHandler {
                 .build());
     }
 
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiError> onNotFound(NotFoundException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.builder()
+                .timestamp(Instant.now())
+                .status(404)
+                .error("NOT_FOUND")
+                .message(ex.getMessage())
+                .path(req.getRequestURI())
+                .build());
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiError> onConstraint(ConstraintViolationException ex, HttpServletRequest req) {
         return ResponseEntity.badRequest().body(ApiError.builder()
