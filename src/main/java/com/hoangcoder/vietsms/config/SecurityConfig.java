@@ -1,5 +1,7 @@
 package com.hoangcoder.vietsms.config;
 
+import com.hoangcoder.vietsms.audit.AuditFilter;
+import com.hoangcoder.vietsms.ratelimit.RateLimitFilter;
 import com.hoangcoder.vietsms.security.ApiKeyAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -16,6 +18,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final ApiKeyAuthFilter apiKeyAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
+    private final AuditFilter auditFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -35,12 +39,28 @@ public class SecurityConfig {
                         .anyRequest().permitAll())
                 .headers(h -> h.frameOptions(f -> f.disable()))
                 .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(auditFilter, ApiKeyAuthFilter.class)
+                .addFilterAfter(rateLimitFilter, AuditFilter.class)
                 .build();
     }
 
     @Bean
-    public FilterRegistrationBean<ApiKeyAuthFilter> disableAutoRegistration(ApiKeyAuthFilter filter) {
+    public FilterRegistrationBean<ApiKeyAuthFilter> disableApiKeyAutoReg(ApiKeyAuthFilter filter) {
         FilterRegistrationBean<ApiKeyAuthFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> disableRateLimitAutoReg(RateLimitFilter filter) {
+        FilterRegistrationBean<RateLimitFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<AuditFilter> disableAuditAutoReg(AuditFilter filter) {
+        FilterRegistrationBean<AuditFilter> reg = new FilterRegistrationBean<>(filter);
         reg.setEnabled(false);
         return reg;
     }
