@@ -64,14 +64,32 @@ curl -s -X POST http://localhost:8080/v1/sms/send -H "x-api-key: $KEY" \
   -H "content-type: application/json" -d '{"to":"0123456789","content":"x"}'
 ```
 
-## Day 3 (OTP — to be implemented)
+## Day 3 (OTP — done)
+
+Issue an OTP (default 6 digits, 5 minute TTL). The `devCode` field in the response is for demo only — real telecom systems never return the code over the API.
 
 ```bash
 curl -s -X POST http://localhost:8080/v1/otp/send \
   -H "x-api-key: $KEY" -H "content-type: application/json" \
   -d '{"phone":"0987654321"}' | jq
+```
 
+Verify. After 3 wrong attempts the code is permanently locked, regardless of whether you later submit the correct code.
+
+```bash
 curl -s -X POST http://localhost:8080/v1/otp/verify \
   -H "x-api-key: $KEY" -H "content-type: application/json" \
   -d '{"phone":"0987654321","code":"123456"}' | jq
 ```
+
+Cooldown: a second `send` for the same phone within 30s returns **429** with a `Retry-After` header.
+
+Response codes:
+
+| Status | Meaning |
+|---|---|
+| `{"verified":true}` | Code accepted |
+| `{"verified":false,"reason":"INVALID_CODE","attemptsLeft":N}` | Wrong code, N attempts remaining |
+| `{"verified":false,"reason":"LOCKED","attemptsLeft":0}` | Too many wrong attempts, code locked |
+| `{"verified":false,"reason":"EXPIRED"}` | TTL elapsed |
+| `{"verified":false,"reason":"NO_OTP_ISSUED"}` | This phone never received an OTP |

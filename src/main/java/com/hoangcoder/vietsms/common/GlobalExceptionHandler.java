@@ -1,5 +1,6 @@
 package com.hoangcoder.vietsms.common;
 
+import com.hoangcoder.vietsms.common.exceptions.TooEarlyException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,19 @@ public class GlobalExceptionHandler {
                 .path(req.getRequestURI())
                 .fieldErrors(fields)
                 .build());
+    }
+
+    @ExceptionHandler(TooEarlyException.class)
+    public ResponseEntity<ApiError> onTooEarly(TooEarlyException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(ApiError.builder()
+                        .timestamp(Instant.now())
+                        .status(429)
+                        .error("COOLDOWN_ACTIVE")
+                        .message(ex.getMessage())
+                        .path(req.getRequestURI())
+                        .build());
     }
 
     @ExceptionHandler(NotFoundException.class)
