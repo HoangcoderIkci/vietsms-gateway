@@ -135,6 +135,26 @@ curl -i http://localhost:8080/v1/ping
 curl -i -H "x-api-key: vsms_<the-key-you-saved>" http://localhost:8080/v1/ping
 ```
 
+## Configuration
+
+All settings live in `src/main/resources/application.yml`. Common overrides:
+
+| Property | Default | Description |
+|---|---|---|
+| `vietsms.delivery.worker-interval-ms` | `1000` | How often the delivery worker ticks |
+| `vietsms.delivery.batch-size` | `50` | Max messages picked per tick |
+| `vietsms.delivery.success-rate` | `0.95` | Simulated carrier success probability |
+| `vietsms.delivery.min-delay-ms` | `1000` | Earliest moment a SENT message can finalize |
+| `vietsms.delivery.max-retries` | `3` | Retry budget before terminal FAILED |
+| `vietsms.ratelimit.sms-per-minute` | `10` | Sliding-window limit for `/v1/sms/send` |
+| `vietsms.ratelimit.otp-per-minute` | `5` | Sliding-window limit for `/v1/otp/send` |
+| `vietsms.ratelimit.otp-per-phone-cooldown-seconds` | `30` | Min interval between OTPs for the same phone |
+| `vietsms.otp.default-length` | `6` | OTP code length when client omits the field |
+| `vietsms.otp.default-ttl-seconds` | `300` | OTP TTL when client omits the field |
+| `vietsms.otp.max-attempts` | `3` | Wrong attempts before LOCKED |
+
+Any property can be overridden via env (`VIETSMS_DELIVERY_SUCCESS_RATE=0.5`), `--key=value` CLI args, or a profile-specific `application-<profile>.yml`.
+
 ## Testing
 
 ```bash
@@ -193,4 +213,4 @@ src/main/resources/
 
 ## License
 
-MIT. See `LICENSE` (to be added).
+MIT — see [`LICENSE`](LICENSE).
