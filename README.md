@@ -81,7 +81,7 @@ The project is built in seven daily slices. Each day's deliverable is small but 
 | 2 | SMS endpoints (send, get, list) and the delivery worker with retries | **Done** |
 | 3 | OTP endpoints (send, verify) with attempt locking and cooldown | **Done** |
 | 4 | Rate limiting (sliding window) and audit logging | **Done** |
-| 5 | Validation polish, idempotency end-to-end, observability | Planned |
+| 5 | Micrometer / Prometheus metrics, Swagger polish, error catalog | **Done** |
 | 6 | Test coverage and documentation polish | Planned |
 | 7 | Dockerfile, docker-compose, GitHub Actions CI | Planned |
 
