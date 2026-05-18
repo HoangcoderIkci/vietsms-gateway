@@ -14,14 +14,68 @@ Most portfolio projects are todo lists, blog clones, or e-commerce demos. They p
 
 This service is intentionally narrow and intentionally Viettel-flavored. The architecture covers patterns that come up in real telecom systems:
 
-- API key authentication with hashed storage
-- Sliding-window rate limiting per key and per phone number
-- Asynchronous delivery worker with a state machine, retries, and graceful shutdown
+- API key authentication with BCrypt-hashed storage and 8-char prefix lookup
+- Sliding-window rate limiting per (API key, endpoint), with `Retry-After` and `X-RateLimit-*` headers
+- Asynchronous delivery worker with a state machine, exponential-backoff retries, and configurable batch size
 - Idempotency on accept (`client_message_id`)
-- OTP issuance with TTL, attempt locking, and per-phone cooldown
-- Audit logging that never stores full phone numbers
-- Vietnamese phone number validation and normalization
-- OpenAPI / Swagger documentation
+- OTP issuance with TTL, attempt locking after N wrong tries, and per-phone send cooldown
+- Audit logging with per-request `X-Request-Id` correlation
+- Vietnamese phone number validation and normalization (`0xxx` ↔ `+84xxx`)
+- Micrometer / Prometheus metrics for every domain event (`vietsms_sms_*`, `vietsms_otp_*`)
+- OpenAPI / Swagger documentation with try-it-now examples
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Client[Client] -->|x-api-key| Filters
+    subgraph Filters[Filter chain]
+        AuthF[ApiKeyAuthFilter] --> AuditF[AuditFilter] --> RLF[RateLimitFilter]
+    end
+    RLF --> Ctrl[Controllers /v1/...]
+    Ctrl --> Svc[SmsService / OtpService]
+    Svc --> Repo[(JPA Repositories)]
+    Repo --> DB[(H2 / PostgreSQL)]
+    Worker[DeliveryWorker @Scheduled] --> Repo
+    Svc -.metrics.-> M[Micrometer]
+    Worker -.metrics.-> M
+    M --> Prom[/actuator/prometheus]
+    AuditF --> Repo
+```
+
+The filter chain enforces auth first, then assigns a request id (audit), then applies rate limits. Controllers receive an authenticated `ApiKey` principal via Spring Security's `@AuthenticationPrincipal`, so they never have to re-validate it. Long-running work (delivery) lives in a `@Scheduled` worker rather than the request thread.
+
+### SMS lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    Client->>+SmsController: POST /v1/sms/send (to, content, clientMessageId)
+    SmsController->>+SmsService: send(apiKeyId, request)
+    SmsService->>SmsRepository: findByApiKeyId+clientMessageId<br/>(idempotency check)
+    alt existing message
+        SmsRepository-->>SmsService: existing row
+        SmsService-->>-SmsController: existing SmsMessage (no insert)
+    else new
+        SmsService->>SmsRepository: save(QUEUED)
+        SmsRepository-->>SmsService: persisted id
+    end
+    SmsController-->>-Client: 202 Accepted { id, status: QUEUED }
+
+    loop every 1s
+        DeliveryWorker->>SmsRepository: findReadyForProcessing(QUEUED)
+        DeliveryWorker->>SmsRepository: save(SENT, sent_at = now)
+        Note over DeliveryWorker: simulate carrier delay (1–3s)
+        DeliveryWorker->>SmsRepository: findSentReadyToFinalize(SENT)
+        alt 95% success
+            DeliveryWorker->>SmsRepository: save(DELIVERED)
+        else 5% failure & retry budget remaining
+            DeliveryWorker->>SmsRepository: save(QUEUED, next_retry_at = now + backoff)
+        else failure & exhausted
+            DeliveryWorker->>SmsRepository: save(FAILED)
+        end
+    end
+```
 
 ## Stack
 
@@ -81,6 +135,26 @@ curl -i http://localhost:8080/v1/ping
 curl -i -H "x-api-key: vsms_<the-key-you-saved>" http://localhost:8080/v1/ping
 ```
 
+## Testing
+
+```bash
+mvn verify
+```
+
+This runs the full suite (currently **52 tests**, all green) and produces a JaCoCo coverage report at `target/site/jacoco/index.html`. Per-package instruction coverage typically lands at:
+
+| Package | Coverage |
+|---|---|
+| `config`, `seed`, `sms.dto`, `validation` | 100% |
+| `security` | 90% |
+| `ratelimit` | 87% |
+| `sms` | 85% |
+| `otp` | 79% |
+| `audit` | 78% |
+| `worker` | 66% |
+
+Integration tests use `@ActiveProfiles("test")` to run against an in-memory H2 (see `src/test/resources/application-test.yml`). Awaitility waits for the delivery worker to transition messages without race conditions.
+
 ## Roadmap
 
 The project is built in seven daily slices. Each day's deliverable is small but complete.
@@ -92,7 +166,7 @@ The project is built in seven daily slices. Each day's deliverable is small but 
 | 3 | OTP endpoints (send, verify) with attempt locking and cooldown | **Done** |
 | 4 | Rate limiting (sliding window) and audit logging | **Done** |
 | 5 | Micrometer / Prometheus metrics, Swagger polish, error catalog | **Done** |
-| 6 | Test coverage and documentation polish | Planned |
+| 6 | Test coverage (JaCoCo) and documentation polish (architecture diagrams) | **Done** |
 | 7 | Dockerfile, docker-compose, GitHub Actions CI | **Done** |
 
 Design document lives at `docs/superpowers/specs/2026-05-18-vietsms-gateway-design.md`.

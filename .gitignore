@@ -12,6 +12,9 @@ target/
 *.class
 HELP.md
 
+# JaCoCo
+jacoco.exec
+
 # IDE
 .idea/
 *.iml
