@@ -1,0 +1,16 @@
+target/
+data/
+.git/
+.github/
+.idea/
+.vscode/
+*.iml
+.claude/
+.superpowers/
+docs/
+README.md
+*.log
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml

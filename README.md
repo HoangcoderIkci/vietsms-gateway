@@ -1,5 +1,7 @@
 # VietSMS Gateway
 
+![ci](https://github.com/hoangcoder/vietsms-gateway/actions/workflows/ci.yml/badge.svg)
+
 A telecom-style SMS / OTP gateway API simulator, built with Spring Boot 3 and Java 21.
 
 The shape of the service mirrors what a Vietnamese carrier (Viettel, Vinaphone, Mobifone) actually sells to banks, e-wallets, and e-commerce platforms: clients hold an API key, hit a REST endpoint to enqueue an SMS or OTP, and the system handles delivery asynchronously with retries, status reporting, and audit trails.
@@ -36,7 +38,15 @@ This service is intentionally narrow and intentionally Viettel-flavored. The arc
 
 ## Quick start
 
-Requirements: JDK 21, Maven 3.9+.
+### With Docker (recommended)
+
+```bash
+docker compose up --build
+```
+
+On first start the application creates an H2 database under the `vietsms-data` volume, applies Flyway migrations, and prints a demo API key to the container log. Tail with `docker compose logs -f vietsms` and copy the key.
+
+### With Maven (local JDK 21)
 
 ```bash
 mvn spring-boot:run
@@ -83,7 +93,7 @@ The project is built in seven daily slices. Each day's deliverable is small but 
 | 4 | Rate limiting (sliding window) and audit logging | **Done** |
 | 5 | Micrometer / Prometheus metrics, Swagger polish, error catalog | **Done** |
 | 6 | Test coverage and documentation polish | Planned |
-| 7 | Dockerfile, docker-compose, GitHub Actions CI | Planned |
+| 7 | Dockerfile, docker-compose, GitHub Actions CI | **Done** |
 
 Design document lives at `docs/superpowers/specs/2026-05-18-vietsms-gateway-design.md`.
 
