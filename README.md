@@ -32,14 +32,14 @@ flowchart LR
     subgraph Filters[Filter chain]
         AuthF[ApiKeyAuthFilter] --> AuditF[AuditFilter] --> RLF[RateLimitFilter]
     end
-    RLF --> Ctrl[Controllers /v1/...]
-    Ctrl --> Svc[SmsService / OtpService]
+    RLF --> Ctrl["Controllers /v1/..."]
+    Ctrl --> Svc["SmsService / OtpService"]
     Svc --> Repo[(JPA Repositories)]
-    Repo --> DB[(H2 / PostgreSQL)]
-    Worker[DeliveryWorker @Scheduled] --> Repo
+    Repo --> DB[("H2 / PostgreSQL")]
+    Worker["DeliveryWorker @Scheduled"] --> Repo
     Svc -.metrics.-> M[Micrometer]
     Worker -.metrics.-> M
-    M --> Prom[/actuator/prometheus]
+    M --> Prom["/actuator/prometheus"]
     AuditF --> Repo
 ```
 
