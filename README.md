@@ -1,6 +1,6 @@
 # VietSMS Gateway
 
-![ci](https://github.com/hoangcoder/vietsms-gateway/actions/workflows/ci.yml/badge.svg)
+![ci](https://github.com/HoangcoderIkci/vietsms-gateway/actions/workflows/ci.yml/badge.svg)
 
 A telecom-style SMS / OTP gateway API simulator, built with Spring Boot 3 and Java 21.
 
