@@ -43,6 +43,18 @@ Every error response follows this JSON shape:
 | `RATE_LIMIT_EXCEEDED` | Caller exceeded the per-endpoint sliding window. | `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining` |
 | `COOLDOWN_ACTIVE` | Per-phone cooldown still active for OTP send. | `Retry-After` |
 
+### 409 Conflict
+
+| `error` | When |
+|---|---|
+| `WEBHOOK_LIMIT_REACHED` | The API key already has 5 webhook endpoints registered (the maximum). Delete one before adding another. |
+
+### 422 Unprocessable Entity
+
+| `error` | When |
+|---|---|
+| `WEBHOOK_URL_INVALID` | The webhook URL fails SSRF validation: not http/https, missing host, resolves to a loopback/private/link-local address, or DNS lookup fails. |
+
 ### 500 Internal Server Error
 
 | `error` | When |

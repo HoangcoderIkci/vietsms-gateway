@@ -1,12 +1,14 @@
 package com.hoangcoder.vietsms.common;
 
 import com.hoangcoder.vietsms.common.exceptions.TooEarlyException;
+import com.hoangcoder.vietsms.webhook.exceptions.WebhookException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -57,12 +59,34 @@ public class GlobalExceptionHandler {
                 .build());
     }
 
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiError> onMissingParam(MissingServletRequestParameterException ex, HttpServletRequest req) {
+        return ResponseEntity.badRequest().body(ApiError.builder()
+                .timestamp(java.time.Instant.now())
+                .status(400)
+                .error("VALIDATION_ERROR")
+                .message("Required request parameter '" + ex.getParameterName() + "' is missing")
+                .path(req.getRequestURI())
+                .build());
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiError> onConstraint(ConstraintViolationException ex, HttpServletRequest req) {
         return ResponseEntity.badRequest().body(ApiError.builder()
                 .timestamp(Instant.now())
                 .status(400)
                 .error("VALIDATION_ERROR")
+                .message(ex.getMessage())
+                .path(req.getRequestURI())
+                .build());
+    }
+
+    @ExceptionHandler(WebhookException.class)
+    public ResponseEntity<ApiError> onWebhook(WebhookException ex, HttpServletRequest req) {
+        return ResponseEntity.status(ex.getHttpStatus()).body(ApiError.builder()
+                .timestamp(java.time.Instant.now())
+                .status(ex.getHttpStatus().value())
+                .error(ex.getErrorCode())
                 .message(ex.getMessage())
                 .path(req.getRequestURI())
                 .build());
