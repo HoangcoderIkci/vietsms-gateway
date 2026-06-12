@@ -50,3 +50,19 @@ jobs:
           tags: vietsms-gateway:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  integration-postgres:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Integration tests (Testcontainers PG16)
+        run: mvn -B -Pdocker-it test
