@@ -94,6 +94,8 @@ public class WebhookService {
                 .filter(e -> e.getApiKeyId().equals(apiKeyId))
                 .orElseThrow(() -> new NotFoundException("Webhook endpoint " + endpointId + " not found"));
 
+        // Purge delivery history trước — FK webhook_delivery.endpoint_id chặn hard-delete
+        deliveryRepository.deleteByEndpointId(endpoint.getId());
         endpointRepository.delete(endpoint);
     }
 

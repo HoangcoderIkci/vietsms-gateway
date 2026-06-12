@@ -69,6 +69,30 @@ class WebhookControllerTest {
     }
 
     @Test
+    void delete_endpoint_with_existing_deliveries_succeeds() throws Exception {
+        // Bug regression: FK webhook_delivery.endpoint_id từng chặn hard-delete -> 500
+        String body = objectMapper.writeValueAsString(Map.of(
+                "url", "https://example.com/hook-del",
+                "events", List.of("sms.delivered")));
+        String resp = mvc.perform(post("/v1/webhooks")
+                        .header("x-api-key", rawKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long id = objectMapper.readTree(resp).get("id").asLong();
+
+        // Tạo delivery row qua endpoint test-fire
+        mvc.perform(post("/v1/webhooks/" + id + "/test").header("x-api-key", rawKey))
+                .andExpect(status().isAccepted());
+
+        mvc.perform(delete("/v1/webhooks/" + id).header("x-api-key", rawKey))
+                .andExpect(status().isNoContent());
+        assertThat(deliveryRepository.findByEndpointIdAndStatusOrderByCreatedAtDesc(
+                id, WebhookDeliveryStatus.PENDING)).isEmpty();
+    }
+
+    @Test
     void register_requires_auth() throws Exception {
         String body = objectMapper.writeValueAsString(Map.of(
                 "url", "https://example.com/hook",

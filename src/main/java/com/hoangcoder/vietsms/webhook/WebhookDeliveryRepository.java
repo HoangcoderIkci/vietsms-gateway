@@ -12,4 +12,6 @@ public interface WebhookDeliveryRepository extends JpaRepository<WebhookDelivery
 
     List<WebhookDelivery> findByEndpointIdAndStatusOrderByCreatedAtDesc(
             Long endpointId, WebhookDeliveryStatus status);
+
+    long deleteByEndpointId(Long endpointId);
 }
