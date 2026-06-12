@@ -138,6 +138,16 @@ curl -i http://localhost:8080/v1/ping
 curl -i -H "x-api-key: vsms_<the-key-you-saved>" http://localhost:8080/v1/ping
 ```
 
+## Running with PostgreSQL
+
+To run the application against PostgreSQL instead of H2:
+
+```bash
+docker compose up --build
+```
+
+The application automatically activates the `postgres` profile and connects to the `postgres` service defined in docker-compose.yml. For local development with the default H2 file-based database, use `mvn spring-boot:run` (no Docker required).
+
 ## Configuration
 
 All settings live in `src/main/resources/application.yml`. Common overrides:

@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vietsms
+      POSTGRES_USER: vietsms
+      POSTGRES_PASSWORD: vietsms
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vietsms -d vietsms"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   vietsms:
     build: .
     image: vietsms-gateway:dev
@@ -7,7 +23,11 @@ services:
       - "8080:8080"
     environment:
       JAVA_OPTS: "-XX:MaxRAMPercentage=75 -XX:+UseG1GC"
-      SPRING_PROFILES_ACTIVE: "dev"
+      SPRING_PROFILES_ACTIVE: "postgres"
+      POSTGRES_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - vietsms-data:/app/data
     restart: unless-stopped
@@ -20,3 +40,4 @@ services:
 
 volumes:
   vietsms-data:
+  postgres-data:
