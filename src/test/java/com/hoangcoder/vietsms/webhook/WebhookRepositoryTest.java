@@ -155,8 +155,13 @@ class WebhookRepositoryTest {
                 .findTop50ByStatusAndNextRetryAtBeforeOrderByNextRetryAtAsc(
                         WebhookDeliveryStatus.PENDING, now);
 
-        assertThat(due50).hasSize(1);
-        assertThat(due50.get(0).getId()).isEqualTo(due.getId());
+        // Assert theo id (query là toàn cục — test khác có thể đã commit rows riêng của chúng)
+        List<Long> ids = due50.stream().map(WebhookDelivery::getId).toList();
+        assertThat(ids).contains(due.getId());
+        assertThat(due50).allSatisfy(d -> {
+            assertThat(d.getStatus()).isEqualTo(WebhookDeliveryStatus.PENDING);
+            assertThat(d.getNextRetryAt()).isBefore(now);
+        });
     }
 
     @Test

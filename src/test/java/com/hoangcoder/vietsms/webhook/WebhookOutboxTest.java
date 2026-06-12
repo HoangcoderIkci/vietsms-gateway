@@ -6,6 +6,7 @@ import com.hoangcoder.vietsms.sms.dto.SendSmsRequest;
 import com.hoangcoder.vietsms.sms.SmsService;
 import com.hoangcoder.vietsms.worker.DeliveryWorker;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,7 +29,27 @@ class WebhookOutboxTest {
     @Autowired WebhookOutbox outbox;
     @Autowired DeliveryWorker worker;
 
+    private final java.util.List<Long> createdEndpoints = new java.util.ArrayList<>();
+
+    @AfterEach
+    void cleanupCommittedRows() {
+        // Tests này commit thật (worker cần thấy data) -> tự dọn để không ô nhiễm test class khác
+        for (Long epId : createdEndpoints) {
+            deliveryRepository.deleteAll(
+                    deliveryRepository.findByEndpointIdAndStatusOrderByCreatedAtDesc(
+                            epId, WebhookDeliveryStatus.PENDING));
+            endpointRepository.deleteById(epId);
+        }
+        createdEndpoints.clear();
+    }
+
     private WebhookEndpoint endpoint(Long apiKeyId, String events, boolean enabled) {
+        WebhookEndpoint saved = save(apiKeyId, events, enabled);
+        createdEndpoints.add(saved.getId());
+        return saved;
+    }
+
+    private WebhookEndpoint save(Long apiKeyId, String events, boolean enabled) {
         return endpointRepository.save(WebhookEndpoint.builder()
                 .apiKeyId(apiKeyId)
                 .url("https://receiver.example.com/hook")
