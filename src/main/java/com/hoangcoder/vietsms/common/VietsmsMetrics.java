@@ -2,7 +2,10 @@ package com.hoangcoder.vietsms.common;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
+
+import java.time.Duration;
 
 @Component
 public class VietsmsMetrics {
@@ -16,6 +19,10 @@ public class VietsmsMetrics {
     private final Counter otpInvalid;
     private final Counter otpLocked;
     private final Counter rateLimitTripped;
+    private final Counter webhookDelivered;
+    private final Counter webhookFailed;
+    private final Counter webhookDead;
+    private final Timer webhookLatency;
 
     public VietsmsMetrics(MeterRegistry registry) {
         smsEnqueued = Counter.builder("vietsms.sms.enqueued")
@@ -45,6 +52,18 @@ public class VietsmsMetrics {
         rateLimitTripped = Counter.builder("vietsms.ratelimit.tripped")
                 .description("Number of requests rejected by the rate limiter")
                 .register(registry);
+        webhookDelivered = Counter.builder("vietsms.webhook.delivered")
+                .description("Number of webhook deliveries acknowledged with 2xx")
+                .register(registry);
+        webhookFailed = Counter.builder("vietsms.webhook.failed_attempt")
+                .description("Number of failed webhook delivery attempts (will retry)")
+                .register(registry);
+        webhookDead = Counter.builder("vietsms.webhook.dead")
+                .description("Number of webhook deliveries dead-lettered after max attempts")
+                .register(registry);
+        webhookLatency = Timer.builder("vietsms.webhook.latency")
+                .description("Latency of webhook HTTP delivery attempts")
+                .register(registry);
     }
 
     public void smsEnqueued() { smsEnqueued.increment(); }
@@ -56,4 +75,8 @@ public class VietsmsMetrics {
     public void otpInvalid() { otpInvalid.increment(); }
     public void otpLocked() { otpLocked.increment(); }
     public void rateLimitTripped() { rateLimitTripped.increment(); }
+    public void webhookDelivered() { webhookDelivered.increment(); }
+    public void webhookFailedAttempt() { webhookFailed.increment(); }
+    public void webhookDead() { webhookDead.increment(); }
+    public void webhookLatency(Duration d) { webhookLatency.record(d); }
 }
