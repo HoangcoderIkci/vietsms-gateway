@@ -4,6 +4,8 @@ import com.hoangcoder.vietsms.common.VietsmsMetrics;
 import com.hoangcoder.vietsms.sms.SmsMessage;
 import com.hoangcoder.vietsms.sms.SmsRepository;
 import com.hoangcoder.vietsms.sms.SmsStatus;
+import com.hoangcoder.vietsms.webhook.WebhookEventType;
+import com.hoangcoder.vietsms.webhook.WebhookOutbox;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +38,7 @@ public class DeliveryWorker {
 
     private final SmsRepository repository;
     private final VietsmsMetrics metrics;
+    private final WebhookOutbox webhookOutbox;
 
     @Scheduled(fixedDelayString = "${vietsms.delivery.worker-interval-ms:1000}")
     @Transactional
@@ -59,6 +62,7 @@ public class DeliveryWorker {
             m.setStatus(SmsStatus.SENT);
             m.setSentAt(now);
             m.setNextRetryAt(null);
+            webhookOutbox.enqueueSmsEvent(m, WebhookEventType.SMS_SENT, now);
         }
         repository.saveAll(ready);
         return ready.size();
@@ -75,6 +79,7 @@ public class DeliveryWorker {
                 m.setDeliveredAt(now);
                 m.setErrorCode(null);
                 metrics.smsDelivered();
+                webhookOutbox.enqueueSmsEvent(m, WebhookEventType.SMS_DELIVERED, now);
             } else {
                 handleFailure(m, now);
             }
@@ -90,6 +95,7 @@ public class DeliveryWorker {
             m.setStatus(SmsStatus.FAILED);
             m.setNextRetryAt(null);
             metrics.smsFailedTerminal();
+            webhookOutbox.enqueueSmsEvent(m, WebhookEventType.SMS_FAILED, now);
             return;
         }
         long backoffSeconds = (long) Math.pow(2, m.getRetryCount() + 1);
