@@ -23,6 +23,7 @@ This service is intentionally narrow and intentionally Viettel-flavored. The arc
 - Vietnamese phone number validation and normalization (`0xxx` ↔ `+84xxx`)
 - Micrometer / Prometheus metrics for every domain event (`vietsms_sms_*`, `vietsms_otp_*`)
 - OpenAPI / Swagger documentation with try-it-now examples
+- Webhook subscriptions with HMAC-SHA256 signed delivery, transactional outbox, and exponential back-off retries (see [`docs/webhooks.md`](docs/webhooks.md))
 
 ## Architecture
 
@@ -125,6 +126,7 @@ Endpoints once the app is running:
 - Prometheus metrics: <http://localhost:8080/actuator/prometheus> (filter `vietsms_*` counters for domain events)
 - Error code catalog: [`docs/error-codes.md`](docs/error-codes.md)
 - Architecture and design rationale: [`docs/architecture.md`](docs/architecture.md)
+- Webhook guide: [`docs/webhooks.md`](docs/webhooks.md)
 
 ### Smoke test
 
@@ -153,6 +155,9 @@ All settings live in `src/main/resources/application.yml`. Common overrides:
 | `vietsms.otp.default-length` | `6` | OTP code length when client omits the field |
 | `vietsms.otp.default-ttl-seconds` | `300` | OTP TTL when client omits the field |
 | `vietsms.otp.max-attempts` | `3` | Wrong attempts before LOCKED |
+| `vietsms.webhooks.enabled` | `true` | Enable/disable the entire webhook subsystem |
+| `vietsms.webhooks.timeout-ms` | `5000` | Connect + read timeout (ms) for outgoing webhook POSTs |
+| `vietsms.webhooks.worker-interval-ms` | `1000` | How often the webhook worker polls the outbox |
 
 Any property can be overridden via env (`VIETSMS_DELIVERY_SUCCESS_RATE=0.5`), `--key=value` CLI args, or a profile-specific `application-<profile>.yml`.
 

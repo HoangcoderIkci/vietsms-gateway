@@ -48,6 +48,38 @@ public class WebhookEventFactory {
      * @return serialized JSON string
      * @throws IllegalStateException if Jackson serialization fails
      */
+    /**
+     * Builds a JSON string for the {@code webhook.test} event.
+     *
+     * <p>Shape:
+     * <pre>{@code
+     * {
+     *   "event": "webhook.test",
+     *   "timestamp": "2024-01-01T00:00:00Z",
+     *   "data": { "message": "VietSMS webhook test" }
+     * }
+     * }</pre>
+     *
+     * @param timestamp the timestamp to embed in the payload
+     * @return serialized JSON string
+     * @throws IllegalStateException if Jackson serialization fails
+     */
+    public String testPayload(Instant timestamp) {
+        try {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("message", "VietSMS webhook test");
+
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("event", WebhookEventType.WEBHOOK_TEST.getWire());
+            payload.put("timestamp", timestamp.toString());
+            payload.put("data", data);
+
+            return objectMapper.writeValueAsString(payload);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize webhook test payload", e);
+        }
+    }
+
     public String smsPayload(SmsMessage msg, WebhookEventType type, Instant timestamp) {
         try {
             Map<String, Object> data = new LinkedHashMap<>();

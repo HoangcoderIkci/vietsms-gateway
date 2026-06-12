@@ -18,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/v1/webhooks")
@@ -69,6 +70,23 @@ public class WebhookController {
             @PathVariable Long id) {
         webhookService.delete(key.getId(), id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/test")
+    @Operation(summary = "Fire a test delivery to a webhook endpoint",
+            description = "Enqueues a webhook.test delivery (PENDING) for the given endpoint. " +
+                    "The WebhookWorker will pick it up on its next tick and POST to the registered URL. " +
+                    "Returns 404 if the endpoint is not found or not owned by the caller.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "202", description = "Test delivery enqueued — deliveryId returned"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid x-api-key header"),
+            @ApiResponse(responseCode = "404", description = "Endpoint not found or not owned by caller")
+    })
+    public ResponseEntity<Map<String, Long>> test(
+            @AuthenticationPrincipal ApiKey key,
+            @PathVariable Long id) {
+        long deliveryId = webhookService.fireTest(key.getId(), id);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of("deliveryId", deliveryId));
     }
 
     @GetMapping("/{id}/deliveries")

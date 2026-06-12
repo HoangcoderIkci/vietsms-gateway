@@ -18,6 +18,9 @@ import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+// Additional imports for test endpoint tests
+import static org.assertj.core.api.Assertions.assertThat;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -31,6 +34,9 @@ class WebhookControllerTest {
 
     @Autowired
     ObjectMapper objectMapper;
+
+    @Autowired
+    WebhookDeliveryRepository deliveryRepository;
 
     String rawKey;
 
@@ -173,6 +179,68 @@ class WebhookControllerTest {
 
         // Try to delete with the other key — must return 404
         mvc.perform(delete("/v1/webhooks/" + endpointId)
+                        .header("x-api-key", otherKey))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error", equalTo("NOT_FOUND")));
+    }
+
+    // -------------------------------------------------------
+    // POST /v1/webhooks/{id}/test — test-fire endpoint
+    // -------------------------------------------------------
+
+    @Test
+    void test_fire_returns_202_and_delivery_row_is_pending() throws Exception {
+        // Register an endpoint
+        String body = objectMapper.writeValueAsString(Map.of(
+                "url", "https://example.com/hook-test-fire",
+                "events", List.of("sms.sent")
+        ));
+        String response = mvc.perform(post("/v1/webhooks")
+                        .header("x-api-key", rawKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long endpointId = objectMapper.readTree(response).get("id").asLong();
+
+        // Fire test
+        String testResponse = mvc.perform(post("/v1/webhooks/" + endpointId + "/test")
+                        .header("x-api-key", rawKey))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.deliveryId", notNullValue()))
+                .andReturn().getResponse().getContentAsString();
+
+        Long deliveryId = objectMapper.readTree(testResponse).get("deliveryId").asLong();
+
+        // Verify delivery row exists and is PENDING with the correct event type
+        WebhookDelivery delivery = deliveryRepository.findById(deliveryId).orElseThrow();
+        assertThat(delivery.getStatus()).isEqualTo(WebhookDeliveryStatus.PENDING);
+        assertThat(delivery.getEventType()).isEqualTo("webhook.test");
+        assertThat(delivery.getEndpointId()).isEqualTo(endpointId);
+    }
+
+    @Test
+    void test_fire_other_keys_endpoint_returns_404() throws Exception {
+        // Register endpoint under key A (rawKey)
+        String body = objectMapper.writeValueAsString(Map.of(
+                "url", "https://example.com/hook-test-other",
+                "events", List.of("sms.sent")
+        ));
+        String response = mvc.perform(post("/v1/webhooks")
+                        .header("x-api-key", rawKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Long endpointId = objectMapper.readTree(response).get("id").asLong();
+
+        // Create a second API key
+        String otherKey = apiKeyService.issue("other-test-" + System.nanoTime(), "o2@example.com", 1000).rawKey();
+
+        // Try to fire test with the other key — must return 404
+        mvc.perform(post("/v1/webhooks/" + endpointId + "/test")
                         .header("x-api-key", otherKey))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error", equalTo("NOT_FOUND")));

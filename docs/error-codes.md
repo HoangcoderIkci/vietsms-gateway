@@ -74,6 +74,17 @@ Verify never returns a 4xx for wrong codes — it returns 200 with `verified=fal
 | `EXPIRED` | The TTL elapsed before verification. |
 | `ALREADY_VERIFIED` | The latest OTP for this phone was already used successfully. |
 
+## Webhook delivery status values
+
+Used in `GET /v1/webhooks/{id}/deliveries?status=<STATUS>`:
+
+| Status | Meaning |
+|---|---|
+| `PENDING` | Enqueued, not yet attempted (or awaiting next retry). |
+| `DELIVERED` | Successfully POSTed to the caller's endpoint (2xx response). |
+| `FAILED` | Current attempt failed; will be retried according to back-off schedule. |
+| `DEAD` | Exhausted all retry attempts (4 total). No further retries. Inspect `lastError` for the cause. |
+
 ## Per-request headers
 
 Every `/v1/**` response carries:

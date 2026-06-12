@@ -27,6 +27,7 @@ public class WebhookService {
     private final WebhookEndpointRepository endpointRepository;
     private final WebhookDeliveryRepository deliveryRepository;
     private final UrlValidator urlValidator;
+    private final WebhookEventFactory eventFactory;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
@@ -94,6 +95,34 @@ public class WebhookService {
                 .orElseThrow(() -> new NotFoundException("Webhook endpoint " + endpointId + " not found"));
 
         endpointRepository.delete(endpoint);
+    }
+
+    /**
+     * Enqueues a {@code webhook.test} delivery for the given endpoint.
+     * Ownership check mirrors DELETE — returns 404 if not owned by caller.
+     *
+     * @return the ID of the created WebhookDelivery row
+     */
+    @Transactional
+    public long fireTest(Long apiKeyId, Long endpointId) {
+        WebhookEndpoint endpoint = endpointRepository.findById(endpointId)
+                .filter(e -> e.getApiKeyId().equals(apiKeyId))
+                .orElseThrow(() -> new NotFoundException("Webhook endpoint " + endpointId + " not found"));
+
+        Instant now = Instant.now();
+        String payload = eventFactory.testPayload(now);
+
+        WebhookDelivery delivery = deliveryRepository.save(WebhookDelivery.builder()
+                .endpointId(endpoint.getId())
+                .eventType(WebhookEventType.WEBHOOK_TEST.getWire())
+                .payload(payload)
+                .status(WebhookDeliveryStatus.PENDING)
+                .attempts(0)
+                .nextRetryAt(now)
+                .createdAt(now)
+                .build());
+
+        return delivery.getId();
     }
 
     @Transactional(readOnly = true)
