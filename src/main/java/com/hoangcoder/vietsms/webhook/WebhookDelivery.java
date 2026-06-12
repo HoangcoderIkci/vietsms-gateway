@@ -28,7 +28,7 @@ public class WebhookDelivery {
     @Column(name = "event_type", nullable = false, length = 32)
     private String eventType;
 
-    @Column(nullable = false, columnDefinition = "CLOB")
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String payload;
 
     @Enumerated(EnumType.STRING)
