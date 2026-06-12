@@ -2,6 +2,17 @@
 
 All notable changes to VietSMS Gateway are tracked here. The project was built across a single multi-hour evening session on **2026-05-18**, scoped as seven daily-sized slices.
 
+## 0.2.0 — 2026-06-12 (WOW Roadmap Phase 1)
+
+### Webhook callbacks
+- Register/list/delete webhook endpoints per API key (`/v1/webhooks`), max 5, SSRF-safe URL validation (scheme + resolved-IP checks).
+- Events: `sms.sent`, `sms.delivered`, `sms.failed` (+ `webhook.test` via `POST /v1/webhooks/{id}/test`); `otp.locked` planned.
+- **Transactional outbox**: state transitions in `DeliveryWorker` enqueue `webhook_delivery` rows in the same transaction — no HTTP inside DB transactions.
+- `WebhookWorker`: HMAC-SHA256 signed POSTs (`X-VietSMS-Signature: sha256=<hex>`), 5s timeout, retry backoff 1m → 5m → 30m, dead-letter after 4 attempts (inspectable via `GET /v1/webhooks/{id}/deliveries?status=DEAD`).
+- Payload phone numbers masked; per-endpoint secret shown once at registration.
+- 4 new Micrometer metrics (`vietsms.webhook.*`), `docs/webhooks.md` with verification snippets (Java + Python), 41 new tests (95 total).
+- Verified end-to-end against a live external receiver: both `webhook.test` and `sms.delivered` delivered with independently-validated signatures (one transient failure auto-recovered by retry).
+
 ## 0.1.0 — 2026-05-18
 
 ### Day 7 — Containerization & CI
