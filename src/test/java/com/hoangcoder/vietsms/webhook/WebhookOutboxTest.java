@@ -33,14 +33,30 @@ class WebhookOutboxTest {
 
     @AfterEach
     void cleanupCommittedRows() {
-        // Tests này commit thật (worker cần thấy data) -> tự dọn để không ô nhiễm test class khác
+        // Tests này commit thật (worker cần thấy data) -> tự dọn để không ô nhiễm test class khác.
+        // Quét đủ mọi status: background worker có thể đã chuyển PENDING -> DEAD/DELIVERED.
         for (Long epId : createdEndpoints) {
-            deliveryRepository.deleteAll(
-                    deliveryRepository.findByEndpointIdAndStatusOrderByCreatedAtDesc(
-                            epId, WebhookDeliveryStatus.PENDING));
+            for (WebhookDeliveryStatus s : WebhookDeliveryStatus.values()) {
+                deliveryRepository.deleteAll(
+                        deliveryRepository.findByEndpointIdAndStatusOrderByCreatedAtDesc(epId, s));
+            }
             endpointRepository.deleteById(epId);
         }
         createdEndpoints.clear();
+    }
+
+    /**
+     * SmsMessage KHÔNG persist: outbox chỉ đọc field, còn background DeliveryWorker
+     * sẽ không bao giờ thấy nó -> test deterministic trên CI chậm (race từng làm CI đỏ:
+     * tick 1s kịp chuyển QUEUED->SENT và ghi event sms.sent ngoài ý đồ test).
+     */
+    private SmsMessage unsavedSms(Long apiKeyId) {
+        SmsMessage m = new SmsMessage();
+        m.setApiKeyId(apiKeyId);
+        m.setToPhone("0987654321");
+        m.setContent("hi");
+        m.setCreatedAt(Instant.now());
+        return m;
     }
 
     private WebhookEndpoint endpoint(Long apiKeyId, String events, boolean enabled) {
@@ -65,7 +81,7 @@ class WebhookOutboxTest {
         var key = apiKeyService.issue("outbox-1", "t@example.com", 100).entity();
         WebhookEndpoint subscribed = endpoint(key.getId(), "sms.delivered,sms.failed", true);
         WebhookEndpoint notSubscribed = endpoint(key.getId(), "sms.sent", true);
-        SmsMessage msg = smsService.send(key.getId(), new SendSmsRequest("0987654321", "hi", null));
+        SmsMessage msg = unsavedSms(key.getId());
 
         Instant now = Instant.parse("2026-06-12T10:00:00Z");
         outbox.enqueueSmsEvent(msg, WebhookEventType.SMS_DELIVERED, now);
@@ -87,7 +103,7 @@ class WebhookOutboxTest {
     void enqueue_skips_disabled_endpoint_and_global_flag_off() {
         var key = apiKeyService.issue("outbox-2", "t@example.com", 100).entity();
         WebhookEndpoint disabledEp = endpoint(key.getId(), "sms.delivered", false);
-        SmsMessage msg = smsService.send(key.getId(), new SendSmsRequest("0987654321", "hi", null));
+        SmsMessage msg = unsavedSms(key.getId());
 
         outbox.enqueueSmsEvent(msg, WebhookEventType.SMS_DELIVERED, Instant.now());
         assertThat(deliveryRepository.findByEndpointIdAndStatusOrderByCreatedAtDesc(
