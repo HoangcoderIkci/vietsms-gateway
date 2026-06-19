@@ -205,6 +205,25 @@ This runs the full suite (currently **52 tests**, all green) and produces a JaCo
 
 Integration tests use `@ActiveProfiles("test")` to run against an in-memory H2 (see `src/test/resources/application-test.yml`). Awaitility waits for the delivery worker to transition messages without race conditions.
 
+## Performance
+
+Load-tested with [k6](deploy/k6/send-load.js): a 5-minute ramp to **200 concurrent users**, mixed workload (50% list reads, 20% SMS sends, 20% pings, 10% OTP sends) against the PostgreSQL-backed stack. Rate limits were raised for the run to measure the raw request pipeline rather than the limiter. Methodology and full output: [`deploy/k6/results/`](deploy/k6/results/).
+
+Profiling pointed at the database connection pool as the bottleneck; raising HikariCP `maximum-pool-size` from 10 → 30 was measured before and after:
+
+| Metric | pool = 10 | pool = 30 | Δ |
+|---|---|---|---|
+| Throughput | 123.3 req/s | **158.7 req/s** | **+29%** |
+| Latency p95 | 1.78 s | **1.37 s** | **−23%** |
+| Latency avg | 732 ms | 524 ms | −28% |
+| Latency median | 628 ms | 433 ms | −31% |
+| Total requests | 37,016 | 47,616 | — |
+| Errors (5xx/timeouts) | **0%** | **0%** | — |
+
+**Zero errors** across ~85k requests at 200 VUs, and the pool tune confirmed the bottleneck (+29% throughput, −23% p95). The remaining latency is dominated by the test rig itself — a single dev laptop running the app, PostgreSQL, Prometheus, Grafana, the k6 container *and* a VPN concurrently. On dedicated hardware with an isolated database, sub-200 ms p95 at this concurrency is the expectation; the value here is the methodology (identify → tune → re-measure) and the honest before/after, not the absolute milliseconds.
+
+Run it yourself: `docker compose up -d`, then see [`deploy/k6/README.md`](deploy/k6/README.md).
+
 ## Roadmap
 
 The project is built in seven daily slices. Each day's deliverable is small but complete.

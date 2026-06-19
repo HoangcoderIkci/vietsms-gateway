@@ -2,6 +2,13 @@
 
 All notable changes to VietSMS Gateway are tracked here. The project was built across a single multi-hour evening session on **2026-05-18**, scoped as seven daily-sized slices.
 
+## 0.5.0 — 2026-06-19 (WOW Roadmap Phase 4)
+
+### Load testing & performance
+- k6 mixed-workload load script (`deploy/k6/send-load.js`): 5-min ramp to 200 VUs, 50% list reads / 20% SMS sends / 20% pings / 10% OTP sends, rate-limit-aware (429s tracked separately, not counted as failures).
+- Measured against the PostgreSQL stack: **0 errors across ~85k requests** at 200 concurrent users.
+- Identified the HikariCP connection pool as the bottleneck and tuned `maximum-pool-size` 10 → 30: **+29% throughput (123→159 req/s), −23% p95 latency (1.78s→1.37s)**. Before/after methodology + raw results in `deploy/k6/results/`, summary in README → Performance.
+
 ## 0.4.0 — 2026-06-19 (WOW Roadmap Phase 3)
 
 ### Observability

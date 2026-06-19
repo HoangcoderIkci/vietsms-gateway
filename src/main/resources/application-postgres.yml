@@ -4,7 +4,10 @@ spring:
     username: ${POSTGRES_USER:vietsms}
     password: ${POSTGRES_PASSWORD:vietsms}
     hikari:
-      maximum-pool-size: 10
+      # 30 cân bằng với PostgreSQL max_connections=100; pool 10 là nút thắt dưới tải cao
+      # (load test P4: p95 1.78s @ pool 10 → cải thiện rõ khi nâng pool). Mỗi request giữ
+      # connection ngắn nên pool rộng hơn giảm thời gian chờ ở concurrency cao.
+      maximum-pool-size: 30
   jpa:
     hibernate:
       ddl-auto: validate

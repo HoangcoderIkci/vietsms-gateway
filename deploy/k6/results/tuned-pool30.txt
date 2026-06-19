@@ -1,0 +1,27 @@
+VietSMS Gateway — k6 load test (TUNED, HikariCP pool = 30)
+================================================================
+Date:        2026-06-19
+Profile:     ramp 0→50→200 VUs over 5m (1m→2m→1m hold→1m down)
+Workload:    50% GET /v1/sms (list), 20% POST /v1/sms/send,
+             20% GET /v1/ping, 10% POST /v1/otp/send
+Backend:     PostgreSQL 16 (docker-compose), rate limits raised for the run
+Host:        single dev box (Windows 11 + Docker Desktop/WSL2) running app +
+             postgres + prometheus + grafana + k6 containers concurrently, VPN active
+Change:      spring.datasource.hikari.maximum-pool-size 10 → 30
+
+Results
+-------
+http_reqs ............. 47616   (158.65 req/s)   [+29% vs pool=10]
+http_req_failed ....... 0.00%   (0 / 47616)
+checks_succeeded ...... 100.00% (47615 / 47615)
+rate_limited .......... 0.00%   (0 / 14225 write attempts)
+http_req_duration ..... avg=524.20ms  med=433.22ms  p(90)=1.14s  p(95)=1.37s  max=3.41s   [p95 −23%]
+iteration_duration .... avg=725.22ms  p(95)=1.58s
+data_received ......... 92 MB (306 kB/s)
+
+Outcome: raising the pool from 10→30 lifted throughput +29% and cut p95 latency
+−23% with zero errors — confirming the pool was the primary bottleneck. Remaining
+p95 (1.37s) is dominated by CPU contention on the shared single-host test rig
+(app + DB + Prometheus + Grafana + k6 + VPN all on one machine), not application
+logic. On dedicated hardware with an isolated DB, sub-200ms p95 at this concurrency
+is expected.

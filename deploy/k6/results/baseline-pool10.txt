@@ -1,0 +1,22 @@
+VietSMS Gateway — k6 load test (BASELINE, HikariCP pool = 10)
+================================================================
+Date:        2026-06-19
+Profile:     ramp 0→50→200 VUs over 5m (1m→2m→1m hold→1m down)
+Workload:    50% GET /v1/sms (list), 20% POST /v1/sms/send,
+             20% GET /v1/ping, 10% POST /v1/otp/send
+Backend:     PostgreSQL 16 (docker-compose), rate limits raised for the run
+Host:        single dev box (Windows 11 + Docker Desktop/WSL2) running app +
+             postgres + prometheus + grafana + k6 containers concurrently, VPN active
+
+Results
+-------
+http_reqs ............. 37016   (123.30 req/s)
+http_req_failed ....... 0.00%   (0 / 37016)
+checks_succeeded ...... 100.00% (37015 / 37015)
+rate_limited .......... 0.00%   (0 / 11040 write attempts)
+http_req_duration ..... avg=732.55ms  med=627.96ms  p(90)=1.48s  p(95)=1.78s  max=4.47s
+iteration_duration .... avg=933.58ms  p(95)=1.98s
+data_received ......... 71 MB (236 kB/s)
+
+Threshold p95<200ms: CROSSED (1.78s). Bottleneck: connection pool (10) saturated
+under 200 concurrent VUs with ~80% of requests hitting PostgreSQL.

@@ -100,8 +100,8 @@ function uniquePhone() {
   const iter   = exec.vu.iterationInScenario; // 0-based within this VU
   // Combine to form a number in range 0000000–9999999 (7 digits).
   // VU ids go up to 200; iterations up to ~300 over 5m at default think-time.
-  const suffix = String((vuId * 10000 + iter) % 10000000).padStart(7, '0');
-  return `09${suffix.slice(0, 8)}`; // "09" + up to 8 digits → valid VN format
+  const suffix = String((vuId * 100000 + iter) % 100000000).padStart(8, '0');
+  return `09${suffix}`; // "09" + 8 digits = 10-digit VN mobile (validator requires 10 digits)
 }
 
 /**
