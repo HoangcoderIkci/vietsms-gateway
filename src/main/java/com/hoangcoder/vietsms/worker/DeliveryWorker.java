@@ -1,11 +1,8 @@
 package com.hoangcoder.vietsms.worker;
 
-import com.hoangcoder.vietsms.common.VietsmsMetrics;
 import com.hoangcoder.vietsms.sms.SmsMessage;
 import com.hoangcoder.vietsms.sms.SmsRepository;
 import com.hoangcoder.vietsms.sms.SmsStatus;
-import com.hoangcoder.vietsms.webhook.WebhookEventType;
-import com.hoangcoder.vietsms.webhook.WebhookOutbox;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,18 +24,11 @@ public class DeliveryWorker {
     @Value("${vietsms.delivery.batch-size:50}")
     private int batchSize;
 
-    @Value("${vietsms.delivery.success-rate:0.95}")
-    private double successRate;
-
     @Value("${vietsms.delivery.min-delay-ms:1000}")
     private long minDelayMs;
 
-    @Value("${vietsms.delivery.max-retries:3}")
-    private int maxRetries;
-
     private final SmsRepository repository;
-    private final VietsmsMetrics metrics;
-    private final WebhookOutbox webhookOutbox;
+    private final DeliveryProcessor processor;
 
     @Scheduled(fixedDelayString = "${vietsms.delivery.worker-interval-ms:1000}")
     @Transactional
@@ -59,10 +49,7 @@ public class DeliveryWorker {
         List<SmsMessage> ready = repository.findReadyForProcessing(
                 SmsStatus.QUEUED, now, PageRequest.of(0, batchSize));
         for (SmsMessage m : ready) {
-            m.setStatus(SmsStatus.SENT);
-            m.setSentAt(now);
-            m.setNextRetryAt(null);
-            webhookOutbox.enqueueSmsEvent(m, WebhookEventType.SMS_SENT, now);
+            processor.markSent(m, now);
         }
         repository.saveAll(ready);
         return ready.size();
@@ -74,34 +61,9 @@ public class DeliveryWorker {
                 SmsStatus.SENT, readyBefore, PageRequest.of(0, batchSize));
         ThreadLocalRandom rng = ThreadLocalRandom.current();
         for (SmsMessage m : sent) {
-            if (rng.nextDouble() < successRate) {
-                m.setStatus(SmsStatus.DELIVERED);
-                m.setDeliveredAt(now);
-                m.setErrorCode(null);
-                metrics.smsDelivered();
-                webhookOutbox.enqueueSmsEvent(m, WebhookEventType.SMS_DELIVERED, now);
-            } else {
-                handleFailure(m, now);
-            }
+            processor.finalizeOne(m, now, rng);
         }
         repository.saveAll(sent);
         return sent.size();
-    }
-
-    private void handleFailure(SmsMessage m, Instant now) {
-        m.setRetryCount(m.getRetryCount() + 1);
-        m.setErrorCode("CARRIER_REJECTED");
-        if (m.getRetryCount() >= maxRetries) {
-            m.setStatus(SmsStatus.FAILED);
-            m.setNextRetryAt(null);
-            metrics.smsFailedTerminal();
-            webhookOutbox.enqueueSmsEvent(m, WebhookEventType.SMS_FAILED, now);
-            return;
-        }
-        long backoffSeconds = (long) Math.pow(2, m.getRetryCount() + 1);
-        m.setStatus(SmsStatus.QUEUED);
-        m.setNextRetryAt(now.plusSeconds(backoffSeconds));
-        m.setSentAt(null);
-        metrics.smsRetried();
     }
 }
