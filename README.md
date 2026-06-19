@@ -166,6 +166,10 @@ Logs are human-readable by default; activate the `json-logs` profile (`SPRING_PR
 
 Rate limiting defaults to an in-memory sliding-window implementation (`vietsms.ratelimit.backend=memory`) suitable for single-node development. When multiple app instances sit behind a load balancer, they must enforce one shared rate-limit budget, which an in-memory counter cannot do. Set `vietsms.ratelimit.backend=redis` to switch to a **Redis-backed distributed limiter** (Bucket4j) — the `docker-compose.yml` automatically configures this for the containerized stack.
 
+## Delivery pipeline
+
+SMS delivery defaults to an in-process `@Scheduled` worker that polls the database at a configurable interval (1 second by default). This is suitable for single-node deployments. To enable an **event-driven Kafka-based pipeline**, set `vietsms.delivery.mode=kafka`. In Kafka mode, the SMS service publishes each accepted SMS id to the Kafka topic `vietsms.sms.delivery`; a `@KafkaListener` consumer processes the delivery state machine and republishes for retries. This decouples acceptance from delivery, scales consumers horizontally across multiple app instances, and achieves better throughput at the cost of eventual consistency (a message may be re-processed after a broker restart). The `docker-compose.yml` includes a **Redpanda** broker (single-node Kafka-compatible); the containerized app automatically enables `mode=kafka`.
+
 ## Configuration
 
 All settings live in `src/main/resources/application.yml`. Common overrides:

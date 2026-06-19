@@ -2,6 +2,13 @@
 
 All notable changes to VietSMS Gateway are tracked here. The project was built across a single multi-hour evening session on **2026-05-18**, scoped as seven daily-sized slices.
 
+## 0.7.0 — 2026-06-20 (WOW Roadmap Phase 6b)
+
+### Event-driven delivery (Kafka)
+- Extracted `DeliveryProcessor` so the SMS state machine is reusable by both the scheduled worker and a Kafka consumer.
+- Added an event-driven delivery pipeline (`vietsms.delivery.mode=kafka`): on accept the service publishes the SMS id to topic `vietsms.sms.delivery`; a `@KafkaListener` consumer runs the delivery transition and re-publishes for retries. The in-process `@Scheduled` worker remains the default (`mode=scheduled`).
+- docker-compose now includes a Redpanda broker; the app container runs with `mode=kafka`. Verified end-to-end with a Testcontainers Redpanda integration test.
+
 ## 0.6.0 — 2026-06-19 (WOW Roadmap Phase 6a)
 
 ### Distributed rate limiting

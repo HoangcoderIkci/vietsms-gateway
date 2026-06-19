@@ -27,10 +27,14 @@ services:
       POSTGRES_HOST: postgres
       VIETSMS_RATELIMIT_BACKEND: redis
       SPRING_DATA_REDIS_HOST: redis
+      VIETSMS_DELIVERY_MODE: kafka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      redpanda:
         condition: service_healthy
     volumes:
       - vietsms-data:/app/data
@@ -75,6 +79,24 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
 volumes:
   vietsms-data:
