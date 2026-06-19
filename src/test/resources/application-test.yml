@@ -13,6 +13,19 @@ spring:
     console:
       enabled: false
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
 vietsms:
   delivery:
     worker-interval-ms: 200
