@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,10 +20,23 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Kafka consumer for the delivery pipeline (mode=kafka only).
  * Processes one SMS end-to-end per message: QUEUED → SENT → DELIVERED/FAILED.
- * If finalizeOne schedules a retry (status returns to QUEUED), the id is
- * re-published to the topic so another attempt occurs.
- * Termination: once retryCount >= maxRetries, finalizeOne sets FAILED (not QUEUED),
- * so no further re-publish happens.
+ *
+ * <p><b>Retry / backoff design:</b><br>
+ * When finalizeOne schedules a retry (status returns to QUEUED with nextRetryAt set),
+ * the id is re-published to the topic only at {@code nextRetryAt} via a TaskScheduler,
+ * so the exponential backoff computed by DeliveryProcessor is actually honored.
+ * Immediate re-publish is intentionally avoided to prevent hot-looping the broker.
+ *
+ * <p><b>Simplification vs. production Kafka patterns:</b><br>
+ * A production system would use a delay-topic (or DLQ + retry-topic) so retries
+ * survive application restart. Here we rely on an in-process TaskScheduler: if the
+ * app restarts between scheduling and firing, the retry is lost.  The persisted
+ * {@code nextRetryAt} field means the durable scheduled-worker path (DeliveryWorker)
+ * can recover these if the app is restarted with mode=worker; that is the intended
+ * fallback for this scope.
+ *
+ * <p>Termination: once retryCount >= maxRetries, finalizeOne sets FAILED (not QUEUED),
+ * so no reschedule ever happens in that path.
  */
 @Component
 @ConditionalOnProperty(name = "vietsms.delivery.mode", havingValue = "kafka")
@@ -33,6 +47,7 @@ public class KafkaDeliveryConsumer {
     private final SmsRepository repository;
     private final DeliveryProcessor processor;
     private final KafkaTemplate<String, String> kafkaTemplate;
+    private final TaskScheduler kafkaRetryTaskScheduler;
 
     @KafkaListener(topics = KafkaDeliveryPublisher.TOPIC, groupId = "vietsms-delivery")
     @Transactional
@@ -52,21 +67,42 @@ public class KafkaDeliveryConsumer {
         }
 
         SmsMessage m = opt.get();
+
+        // If the message has a future nextRetryAt it was re-published early (e.g. from a
+        // previous consumer restart). Defer it again rather than processing ahead of schedule.
+        Instant now = Instant.now();
+        if (m.getStatus() == SmsStatus.QUEUED
+                && m.getNextRetryAt() != null
+                && m.getNextRetryAt().isAfter(now)) {
+            Instant retryAt = m.getNextRetryAt();
+            log.info("KafkaDeliveryConsumer: smsId={} not yet due (nextRetryAt={}), scheduling deferred re-publish",
+                    id, retryAt);
+            // schedule() is non-blocking — runs on the kafkaRetryTaskScheduler thread pool
+            kafkaRetryTaskScheduler.schedule(
+                    () -> kafkaTemplate.send(KafkaDeliveryPublisher.TOPIC, idStr),
+                    retryAt);
+            return;
+        }
+
         if (m.getStatus() != SmsStatus.QUEUED) {
             log.debug("KafkaDeliveryConsumer: smsId={} status={} — not QUEUED, skipping", id, m.getStatus());
             return;
         }
 
-        Instant now = Instant.now();
         processor.markSent(m, now);
         processor.finalizeOne(m, now, ThreadLocalRandom.current());
         repository.save(m);
 
-        // If processor scheduled a retry (QUEUED again with budget remaining), re-publish.
+        // If processor scheduled a retry (QUEUED again with budget remaining),
+        // defer the re-publish to nextRetryAt via TaskScheduler — NOT immediately.
+        // This honours the exponential backoff and prevents hot-looping the broker.
         if (m.getStatus() == SmsStatus.QUEUED) {
-            log.info("KafkaDeliveryConsumer: smsId={} scheduled for retry (retryCount={}), re-publishing to topic",
-                    id, m.getRetryCount());
-            kafkaTemplate.send(KafkaDeliveryPublisher.TOPIC, idStr);
+            Instant retryAt = m.getNextRetryAt();
+            log.info("KafkaDeliveryConsumer: smsId={} retry scheduled at {} (retryCount={}), deferring re-publish",
+                    id, retryAt, m.getRetryCount());
+            kafkaRetryTaskScheduler.schedule(
+                    () -> kafkaTemplate.send(KafkaDeliveryPublisher.TOPIC, idStr),
+                    retryAt);
         }
     }
 }
