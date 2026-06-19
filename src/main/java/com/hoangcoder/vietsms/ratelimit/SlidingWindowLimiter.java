@@ -1,6 +1,7 @@
 package com.hoangcoder.vietsms.ratelimit;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -14,10 +15,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * In-memory sliding-window counter. Each bucket holds the timestamps of requests
  * that fell within its window. Concurrent access is serialized per bucket via
  * synchronized on the bucket's deque.
+ *
+ * <p>Stale buckets (empty or idle for more than {@code RETENTION} minutes) are
+ * periodically evicted by {@link #evictStale()} to prevent unbounded map growth.
  */
 @Component
 @ConditionalOnProperty(name = "vietsms.ratelimit.backend", havingValue = "memory", matchIfMissing = true)
 public class SlidingWindowLimiter implements RateLimiter {
+
+    /** Buckets idle longer than this are eligible for eviction. */
+    static final Duration RETENTION = Duration.ofMinutes(5);
 
     private final Map<String, Deque<Instant>> buckets = new ConcurrentHashMap<>();
 
@@ -55,5 +62,30 @@ public class SlidingWindowLimiter implements RateLimiter {
 
     public int size() {
         return buckets.size();
+    }
+
+    /**
+     * Scheduled sweep that removes buckets which are either empty or whose newest
+     * timestamp is older than {@link #RETENTION}. The check is done under the
+     * bucket's own monitor so it cannot race with an in-flight {@link #tryAcquire}.
+     */
+    @Scheduled(fixedDelayString = "${vietsms.ratelimit.cleanup-interval-ms:60000}")
+    public void evictStale() {
+        evictStale(Instant.now());
+    }
+
+    /**
+     * Package-private overload that accepts an explicit {@code now} for deterministic
+     * testing (mirrors the {@link #tryAcquire(String, int, Duration, Instant)} pattern).
+     */
+    void evictStale(Instant now) {
+        Instant retentionCutoff = now.minus(RETENTION);
+        buckets.entrySet().removeIf(entry -> {
+            Deque<Instant> bucket = entry.getValue();
+            synchronized (bucket) {
+                // Empty bucket or newest timestamp older than retention → evict
+                return bucket.isEmpty() || bucket.peekLast().isBefore(retentionCutoff);
+            }
+        });
     }
 }

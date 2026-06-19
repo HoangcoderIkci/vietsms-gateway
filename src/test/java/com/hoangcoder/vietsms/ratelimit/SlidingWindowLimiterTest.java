@@ -58,4 +58,80 @@ class SlidingWindowLimiterTest {
         var second = limiter.tryAcquire("k", 3, Duration.ofMinutes(1), now.plusMillis(1));
         assertThat(second.remaining()).isEqualTo(1);
     }
+
+    // -----------------------------------------------------------------------
+    // Eviction tests (C5 – memory-leak fix)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void evictStale_removes_empty_buckets() {
+        SlidingWindowLimiter limiter = new SlidingWindowLimiter();
+        Instant t0 = Instant.parse("2026-05-18T22:00:00Z");
+
+        // Populate several distinct buckets
+        limiter.tryAcquire("x", 10, Duration.ofMinutes(1), t0);
+        limiter.tryAcquire("y", 10, Duration.ofMinutes(1), t0);
+        limiter.tryAcquire("z", 10, Duration.ofMinutes(1), t0);
+        assertThat(limiter.size()).isEqualTo(3);
+
+        // Advance clock well past retention (RETENTION = 5 min); all timestamps are stale
+        Instant evictAt = t0.plus(SlidingWindowLimiter.RETENTION).plusSeconds(1);
+        limiter.evictStale(evictAt);
+
+        assertThat(limiter.size()).isZero();
+    }
+
+    @Test
+    void evictStale_keeps_active_buckets() {
+        SlidingWindowLimiter limiter = new SlidingWindowLimiter();
+        Instant t0 = Instant.parse("2026-05-18T22:00:00Z");
+
+        limiter.tryAcquire("active", 10, Duration.ofMinutes(1), t0);
+        limiter.tryAcquire("stale",  10, Duration.ofMinutes(1), t0);
+        assertThat(limiter.size()).isEqualTo(2);
+
+        // "active" gets a fresh request just before eviction time
+        Instant evictAt = t0.plus(SlidingWindowLimiter.RETENTION).plusSeconds(1);
+        limiter.tryAcquire("active", 10, Duration.ofMinutes(1), evictAt.minusSeconds(1));
+
+        limiter.evictStale(evictAt);
+
+        // Only the stale bucket should have been removed
+        assertThat(limiter.size()).isEqualTo(1);
+    }
+
+    @Test
+    void evictStale_removes_bucket_emptied_by_reset() {
+        SlidingWindowLimiter limiter = new SlidingWindowLimiter();
+        Instant t0 = Instant.parse("2026-05-18T22:00:00Z");
+
+        limiter.tryAcquire("k", 10, Duration.ofMinutes(1), t0);
+        assertThat(limiter.size()).isEqualTo(1);
+
+        limiter.reset("k");
+
+        // Evict at any time — the bucket is now empty so should be removed immediately
+        limiter.evictStale(t0.plusSeconds(1));
+
+        assertThat(limiter.size()).isZero();
+    }
+
+    @Test
+    void evictStale_does_not_affect_rate_limiting_decisions() {
+        SlidingWindowLimiter limiter = new SlidingWindowLimiter();
+        Instant t0 = Instant.parse("2026-05-18T22:00:00Z");
+
+        // Fill bucket to limit
+        for (int i = 0; i < 3; i++) {
+            limiter.tryAcquire("k", 3, Duration.ofMinutes(1), t0.plusSeconds(i));
+        }
+
+        // Eviction at t0+10s — timestamps are within retention, bucket must survive
+        limiter.evictStale(t0.plusSeconds(10));
+        assertThat(limiter.size()).isEqualTo(1);
+
+        // Rate-limit decision must still be BLOCKED (entries still within 1-min window)
+        var blocked = limiter.tryAcquire("k", 3, Duration.ofMinutes(1), t0.plusSeconds(10));
+        assertThat(blocked.allowed()).isFalse();
+    }
 }
