@@ -2,6 +2,13 @@
 
 All notable changes to VietSMS Gateway are tracked here. The project was built across a single multi-hour evening session on **2026-05-18**, scoped as seven daily-sized slices.
 
+## 0.6.0 — 2026-06-19 (WOW Roadmap Phase 6a)
+
+### Distributed rate limiting
+- Extracted a `RateLimiter` interface; the in-memory sliding-window limiter remains the default (`vietsms.ratelimit.backend=memory`).
+- Added a Redis-backed distributed limiter via Bucket4j (`backend=redis`) so multiple app instances share one rate-limit budget. Verified with a Testcontainers Redis integration test (two limiter instances on one Redis enforce a single shared limit).
+- docker-compose now includes a `redis` service; the app container runs with `backend=redis`.
+
 ## 0.5.0 — 2026-06-19 (WOW Roadmap Phase 4)
 
 ### Load testing & performance

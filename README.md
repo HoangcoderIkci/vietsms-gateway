@@ -162,6 +162,10 @@ The dashboard tracks SMS throughput & delivery, terminal failures, OTP lockouts,
 
 Logs are human-readable by default; activate the `json-logs` profile (`SPRING_PROFILES_ACTIVE=json-logs`) for structured single-line JSON logs (via logstash-logback-encoder) that include the `requestId` MDC field for correlation with the `X-Request-Id` response header.
 
+### Distributed rate limiting
+
+Rate limiting defaults to an in-memory sliding-window implementation (`vietsms.ratelimit.backend=memory`) suitable for single-node development. When multiple app instances sit behind a load balancer, they must enforce one shared rate-limit budget, which an in-memory counter cannot do. Set `vietsms.ratelimit.backend=redis` to switch to a **Redis-backed distributed limiter** (Bucket4j) — the `docker-compose.yml` automatically configures this for the containerized stack.
+
 ## Configuration
 
 All settings live in `src/main/resources/application.yml`. Common overrides:

@@ -60,6 +60,8 @@ vietsms:
     max-delay-ms: 3000
     max-retries: 3
   ratelimit:
+    # backend: memory | redis (default: memory)
+    # Set to 'redis' for a distributed limiter when multiple app instances share one limit.
     sms-per-minute: 10
     otp-per-minute: 5
     otp-per-phone-cooldown-seconds: 30
