@@ -2,6 +2,16 @@
 
 All notable changes to VietSMS Gateway are tracked here. The project was built across a single multi-hour evening session on **2026-05-18**, scoped as seven daily-sized slices.
 
+## 0.7.1 — 2026-06-20 (Hardening — council review fixes)
+
+Fixes from a simulated multi-role code review (security, correctness):
+- **C1 (security):** OTP `devCode` (raw code) in responses now gated behind `vietsms.otp.expose-dev-code` (default `false`) — never exposed unless explicitly enabled.
+- **C2 (security):** `server.error.include-message` set to `never` — stops leaking exception messages to clients (business 4xx still carry messages via the ApiError handler).
+- **C3 (correctness):** Kafka retry now honors the computed `nextRetryAt` backoff via a `TaskScheduler` instead of re-publishing immediately (which ignored backoff and hot-looped the broker).
+- **C4 (correctness):** `OtpService.verify` now takes a `PESSIMISTIC_WRITE` lock on the active OTP row, closing a check-then-act (TOCTOU) race between concurrent verifies.
+- **C5 (correctness):** `SlidingWindowLimiter` evicts stale/empty buckets on a schedule — prevents unbounded memory growth across many API keys.
+- 112 tests green.
+
 ## 0.7.0 — 2026-06-20 (WOW Roadmap Phase 6b)
 
 ### Event-driven delivery (Kafka)
