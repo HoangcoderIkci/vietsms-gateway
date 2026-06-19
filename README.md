@@ -148,6 +148,20 @@ docker compose up --build
 
 The application automatically activates the `postgres` profile and connects to the `postgres` service defined in docker-compose.yml. For local development with the default H2 file-based database, use `mvn spring-boot:run` (no Docker required).
 
+## Observability
+
+`docker compose up` brings up the full stack — app, PostgreSQL, **Prometheus**, and **Grafana** — with a dashboard auto-provisioned from `deploy/grafana/dashboards/vietsms.json` (no manual import). Prometheus scrapes the app's Micrometer metrics from `/actuator/prometheus` every 5s.
+
+- **Grafana:** http://localhost:3000 (anonymous access enabled for the demo) → dashboard **"VietSMS Gateway"**
+- **Prometheus:** http://localhost:9090
+
+The dashboard tracks SMS throughput & delivery, terminal failures, OTP lockouts, rate-limit trips, and webhook delivery success vs dead-letter with p95 latency — all from real traffic:
+
+![VietSMS Grafana dashboard — SMS throughput, OTP, rate-limit](docs/images/grafana-dashboard-1.png)
+![VietSMS Grafana dashboard — rate-limit, webhook delivery & p95 latency](docs/images/grafana-dashboard-2.png)
+
+Logs are human-readable by default; activate the `json-logs` profile (`SPRING_PROFILES_ACTIVE=json-logs`) for structured single-line JSON logs (via logstash-logback-encoder) that include the `requestId` MDC field for correlation with the `X-Request-Id` response header.
+
 ## Configuration
 
 All settings live in `src/main/resources/application.yml`. Common overrides:

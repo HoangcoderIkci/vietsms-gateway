@@ -2,6 +2,15 @@
 
 All notable changes to VietSMS Gateway are tracked here. The project was built across a single multi-hour evening session on **2026-05-18**, scoped as seven daily-sized slices.
 
+## 0.4.0 — 2026-06-19 (WOW Roadmap Phase 3)
+
+### Observability
+- **Grafana dashboard** auto-provisioned (`deploy/grafana/dashboards/vietsms.json`) + **Prometheus** scraping `/actuator/prometheus` every 5s, both added to docker-compose. 6 panels: SMS throughput, terminal failures, OTP lockouts, rate-limit trips, webhook delivered-vs-dead, webhook p95 latency. Screenshots in README (real traffic).
+- Webhook latency Timer now publishes a percentile histogram (`*_seconds_bucket`) so the p95 panel's `histogram_quantile` works.
+- **Structured JSON logging** profile (`json-logs`) via logstash-logback-encoder, includes `requestId` MDC; human-readable console stays the default.
+- **Bug fix (integration):** removed hardcoded `driver-class-name: org.h2.Driver` from base config — Spring Boot now derives the driver from the JDBC URL, so the `postgres` profile correctly uses the PostgreSQL driver. Previously the app crashed at startup under `docker compose` (H2 driver + Postgres URL); only surfaced when running the real compose stack (Testcontainers masked it via `@ServiceConnection`).
+- Built T12 (stack) and T13 (JSON logging) in parallel via isolated git worktrees. 97 tests green.
+
 ## 0.3.0 — 2026-06-12 (WOW Roadmap Phase 2)
 
 ### PostgreSQL support

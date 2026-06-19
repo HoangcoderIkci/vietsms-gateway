@@ -4,8 +4,9 @@ spring:
   profiles:
     active: dev
   datasource:
+    # driver-class-name cố ý KHÔNG hardcode — Spring Boot tự suy từ JDBC URL.
+    # H2 (jdbc:h2:...) cho dev/test, PostgreSQL (jdbc:postgresql:...) khi profile `postgres`.
     url: jdbc:h2:file:./data/vietsms;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
-    driver-class-name: org.h2.Driver
     username: sa
     password: ""
   jpa:

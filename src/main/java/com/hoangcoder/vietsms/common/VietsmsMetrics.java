@@ -63,6 +63,7 @@ public class VietsmsMetrics {
                 .register(registry);
         webhookLatency = Timer.builder("vietsms.webhook.latency")
                 .description("Latency of webhook HTTP delivery attempts")
+                .publishPercentileHistogram()  // xuất *_seconds_bucket để Prometheus histogram_quantile (p95) hoạt động
                 .register(registry);
     }
 
