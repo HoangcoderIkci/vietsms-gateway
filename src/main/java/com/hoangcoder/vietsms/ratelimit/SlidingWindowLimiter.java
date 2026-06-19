@@ -1,5 +1,6 @@
 package com.hoangcoder.vietsms.ratelimit;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -15,12 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * synchronized on the bucket's deque.
  */
 @Component
-public class SlidingWindowLimiter {
+@ConditionalOnProperty(name = "vietsms.ratelimit.backend", havingValue = "memory", matchIfMissing = true)
+public class SlidingWindowLimiter implements RateLimiter {
 
     private final Map<String, Deque<Instant>> buckets = new ConcurrentHashMap<>();
 
-    public record Decision(boolean allowed, long retryAfterSeconds, int remaining) {}
-
+    @Override
     public Decision tryAcquire(String bucketKey, int limit, Duration window) {
         return tryAcquire(bucketKey, limit, window, Instant.now());
     }

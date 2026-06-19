@@ -33,7 +33,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Value("${vietsms.ratelimit.otp-per-minute:5}")
     private int otpPerMinute;
 
-    private final SlidingWindowLimiter limiter;
+    private final RateLimiter limiter;
     private final ObjectMapper objectMapper;
     private final VietsmsMetrics metrics;
 
@@ -60,7 +60,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         int limit = "otp".equals(endpoint) ? otpPerMinute : smsPerMinute;
         String bucket = "ep:" + endpoint + ":key:" + key.getId();
 
-        SlidingWindowLimiter.Decision d = limiter.tryAcquire(bucket, limit, Duration.ofMinutes(1));
+        RateLimiter.Decision d = limiter.tryAcquire(bucket, limit, Duration.ofMinutes(1));
         response.setHeader("X-RateLimit-Limit", String.valueOf(limit));
         response.setHeader("X-RateLimit-Remaining", String.valueOf(d.remaining()));
         if (!d.allowed()) {
