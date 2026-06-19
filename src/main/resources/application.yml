@@ -37,7 +37,9 @@ spring:
 server:
   port: 8080
   error:
-    include-message: always
+    # never: không leak exception message/stack ra client ở mọi môi trường.
+    # Lỗi nghiệp vụ 4xx vẫn trả message rõ qua GlobalExceptionHandler (ApiError).
+    include-message: never
 
 management:
   endpoints:
