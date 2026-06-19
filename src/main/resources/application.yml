@@ -24,6 +24,15 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 server:
   port: 8080
@@ -51,6 +60,9 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
 
+# vietsms.delivery.mode: scheduled (default) | kafka
+# Leave unset (or set to 'scheduled') to use the polling DeliveryWorker.
+# Set to 'kafka' to disable DeliveryWorker and drive delivery via Kafka topic.
 vietsms:
   delivery:
     worker-interval-ms: 1000

@@ -25,6 +25,11 @@ management:
     metrics:
       export:
         enabled: true
+  # Kafka is not used in scheduled mode (default); disable health check to avoid
+  # spurious broker-connection attempts during tests.
+  health:
+    kafka:
+      enabled: false
 
 vietsms:
   delivery:

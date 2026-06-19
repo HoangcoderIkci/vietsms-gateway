@@ -6,6 +6,7 @@ import com.hoangcoder.vietsms.sms.SmsStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Component
+@ConditionalOnProperty(name = "vietsms.delivery.mode", havingValue = "scheduled", matchIfMissing = true)
 @RequiredArgsConstructor
 @Slf4j
 public class DeliveryWorker {

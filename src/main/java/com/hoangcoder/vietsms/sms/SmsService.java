@@ -4,6 +4,7 @@ import com.hoangcoder.vietsms.common.PhoneNormalizer;
 import com.hoangcoder.vietsms.common.VietsmsMetrics;
 import com.hoangcoder.vietsms.sms.dto.SendSmsRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,7 @@ public class SmsService {
 
     private final SmsRepository repository;
     private final VietsmsMetrics metrics;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public SmsMessage send(Long apiKeyId, SendSmsRequest request) {
@@ -45,6 +47,7 @@ public class SmsService {
         try {
             SmsMessage saved = repository.save(entity);
             metrics.smsEnqueued();
+            eventPublisher.publishEvent(new SmsQueuedEvent(saved.getId()));
             return saved;
         } catch (DataIntegrityViolationException race) {
             // Lost an idempotency race — return the now-existing record.
