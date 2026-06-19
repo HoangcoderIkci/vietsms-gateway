@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -71,7 +72,8 @@ public class OtpService {
         String phone = PhoneNormalizer.normalize(phoneInput);
         Instant now = Instant.now();
 
-        Optional<OtpCode> activeOpt = repository.findActiveByPhone(phone, now);
+        List<OtpCode> activeList = repository.findActiveForUpdate(phone, now);
+        Optional<OtpCode> activeOpt = activeList.isEmpty() ? Optional.empty() : Optional.of(activeList.get(0));
         if (activeOpt.isEmpty()) {
             Optional<OtpCode> latest = repository.findTopByPhoneOrderByCreatedAtDesc(phone);
             if (latest.isEmpty()) {
