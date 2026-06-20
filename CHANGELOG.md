@@ -2,6 +2,11 @@
 
 All notable changes to VietSMS Gateway are tracked here. The project was built across a single multi-hour evening session on **2026-05-18**, scoped as seven daily-sized slices.
 
+## 0.7.2 — 2026-06-20 (Hardening — config & CI)
+- Externalized compose secrets via `.env` / `.env.example`; local dev defaults unchanged
+- Grafana anonymous role downgraded from Admin to Viewer (read-only dashboard access)
+- Added Trivy filesystem security scan to CI pipeline (informational, HIGH/CRITICAL severity)
+
 ## 0.7.1 — 2026-06-20 (Hardening — council review fixes)
 
 Fixes from a simulated multi-role code review (security, correctness):
