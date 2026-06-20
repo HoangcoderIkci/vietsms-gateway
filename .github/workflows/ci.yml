@@ -80,3 +80,7 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: '0'
           format: table
+          # offline-scan: không gọi Maven Central để resolve deps (tránh 429 trên CI IP dùng chung);
+          # vuln DB vẫn tải về quét cục bộ. scanners: thêm secret + misconfig (IaC/Dockerfile) cho giá trị.
+          scanners: vuln,secret,misconfig
+          offline-scan: true
