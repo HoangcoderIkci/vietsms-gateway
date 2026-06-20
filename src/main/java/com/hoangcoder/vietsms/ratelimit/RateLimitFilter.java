@@ -57,11 +57,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return;
         }
         String endpoint = ENDPOINT_KEYS.get(request.getMethod() + " " + request.getRequestURI());
-        int limit = "otp".equals(endpoint) ? otpPerMinute : smsPerMinute;
+        int globalEndpointLimit = "otp".equals(endpoint) ? otpPerMinute : smsPerMinute;
+        int effectiveLimit = (key.getRateLimitRpm() != null && key.getRateLimitRpm() > 0)
+                ? Math.min(globalEndpointLimit, key.getRateLimitRpm())
+                : globalEndpointLimit;
         String bucket = "ep:" + endpoint + ":key:" + key.getId();
 
-        RateLimiter.Decision d = limiter.tryAcquire(bucket, limit, Duration.ofMinutes(1));
-        response.setHeader("X-RateLimit-Limit", String.valueOf(limit));
+        RateLimiter.Decision d = limiter.tryAcquire(bucket, effectiveLimit, Duration.ofMinutes(1));
+        response.setHeader("X-RateLimit-Limit", String.valueOf(effectiveLimit));
         response.setHeader("X-RateLimit-Remaining", String.valueOf(d.remaining()));
         if (!d.allowed()) {
             metrics.rateLimitTripped();
