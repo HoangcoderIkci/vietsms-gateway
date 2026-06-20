@@ -74,13 +74,14 @@ jobs:
       - uses: actions/checkout@v5
       - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@master
+        env:
+          # offline-scan đi qua env (action không có input này). Không gọi Maven Central
+          # để resolve deps → tránh 429 trên CI IP dùng chung; vuln DB vẫn quét cục bộ.
+          TRIVY_OFFLINE_SCAN: "true"
         with:
           scan-type: fs
           scan-ref: .
           severity: HIGH,CRITICAL
           exit-code: '0'
           format: table
-          # offline-scan: không gọi Maven Central để resolve deps (tránh 429 trên CI IP dùng chung);
-          # vuln DB vẫn tải về quét cục bộ. scanners: thêm secret + misconfig (IaC/Dockerfile) cho giá trị.
           scanners: vuln,secret,misconfig
-          offline-scan: true
