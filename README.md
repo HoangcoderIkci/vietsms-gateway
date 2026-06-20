@@ -152,8 +152,10 @@ The application automatically activates the `postgres` profile and connects to t
 
 `docker compose up` brings up the full stack — app, PostgreSQL, **Prometheus**, and **Grafana** — with a dashboard auto-provisioned from `deploy/grafana/dashboards/vietsms.json` (no manual import). Prometheus scrapes the app's Micrometer metrics from `/actuator/prometheus` every 5s.
 
-- **Grafana:** http://localhost:3000 (anonymous access enabled for the demo) → dashboard **"VietSMS Gateway"**
+- **Grafana:** http://localhost:3000 (anonymous access enabled for the demo, read-only Viewer role) → dashboard **"VietSMS Gateway"**
 - **Prometheus:** http://localhost:9090
+
+**Security notes:** Compose secrets (`POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, `GRAFANA_ADMIN_PASSWORD`) are externalized via a `.env` file — copy `.env.example` to `.env` and override values for non-local deployments (`.env` is gitignored). Anonymous Grafana access is limited to the Viewer role (read-only dashboards; editing requires logging in as admin). CI runs a Trivy filesystem scan on every push and PR (informational, HIGH/CRITICAL severity, exit-code 0; flip to 1 to enforce gate).
 
 The dashboard tracks SMS throughput & delivery, terminal failures, OTP lockouts, rate-limit trips, and webhook delivery success vs dead-letter with p95 latency — all from real traffic:
 

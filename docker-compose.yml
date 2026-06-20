@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: vietsms
-      POSTGRES_USER: vietsms
-      POSTGRES_PASSWORD: vietsms
+      POSTGRES_DB: ${POSTGRES_DB:-vietsms}
+      POSTGRES_USER: ${POSTGRES_USER:-vietsms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vietsms}
     ports:
       - "5432:5432"
     volumes:
@@ -61,8 +61,9 @@ services:
       - "3000:3000"
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
     volumes:
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
